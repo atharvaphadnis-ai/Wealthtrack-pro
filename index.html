@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WealthTrack Pro — by Atharva Phadnis</title>
+<script src="vendor/chart.umd.min.js"></script>
+<link href="vendor/external_1.css" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --bg2: #111418;
+    --bg3: #181d24;
+    --border: #1f2833;
+    --accent: #00e5ff;
+    --accent2: #ff4081;
+    --accent3: #69f0ae;
+    --text: #e8edf3;
+    --text2: #8090a0;
+    --font: 'Syne', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh; overflow-x:hidden; }
+
+  /* === SIDEBAR === */
+  #sidebar {
+    position:fixed; left:0; top:0; bottom:0; width:220px;
+    background:var(--bg2); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; z-index:100;
+  }
+  .logo {
+    padding:28px 20px 20px;
+    font-size:1.1rem; font-weight:800; letter-spacing:-.5px;
+    color:var(--accent);
+    border-bottom:1px solid var(--border);
+  }
+  .logo span { color:var(--text2); font-weight:400; font-size:.7rem; display:block; letter-spacing:1px; text-transform:uppercase; margin-top:4px; }
+  nav { flex:1; padding:16px 0; }
+  .nav-item {
+    display:flex; align-items:center; gap:12px;
+    padding:12px 20px; cursor:pointer; font-size:.85rem; font-weight:600;
+    color:var(--text2); transition:all .2s; border-left:3px solid transparent;
+  }
+  .nav-item:hover { color:var(--text); background:var(--bg3); }
+  .nav-item.active { color:var(--accent); border-left-color:var(--accent); background:rgba(0,229,255,.06); }
+  .nav-icon { font-size:1.1rem; width:20px; text-align:center; }
+  .sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); font-size:.7rem; color:var(--text2); font-family:var(--mono); }
+
+  /* === MAIN === */
+  #main { margin-left:220px; padding:32px; min-height:100vh; }
+  .page { display:none; }
+  .page.active { display:block; }
+
+  /* === HEADER === */
+  .page-header { margin-bottom:28px; }
+  .page-header h1 { font-size:1.8rem; font-weight:800; letter-spacing:-1px; }
+  .page-header p { color:var(--text2); font-size:.85rem; margin-top:4px; }
+
+  /* === CARDS === */
+  .card {
+    background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+    padding:20px;
+  }
+  .card-title { font-size:.7rem; text-transform:uppercase; letter-spacing:2px; color:var(--text2); margin-bottom:8px; font-family:var(--mono); }
+
+  /* === SUMMARY GRID === */
+  .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
+  .summary-card { border-radius:12px; padding:20px; position:relative; overflow:hidden; }
+  .summary-card::before { content:''; position:absolute; inset:0; opacity:.08; }
+  .sc-assets { background:linear-gradient(135deg,#001a2e,#002a45); border:1px solid rgba(0,229,255,.25); }
+  .sc-liab { background:linear-gradient(135deg,#2e0014,#45001f); border:1px solid rgba(255,64,129,.25); }
+  .sc-net { background:linear-gradient(135deg,#002e12,#004520); border:1px solid rgba(105,240,174,.25); }
+  .sc-label { font-size:.65rem; text-transform:uppercase; letter-spacing:2px; font-family:var(--mono); margin-bottom:8px; }
+  .sc-assets .sc-label { color:rgba(0,229,255,.7); }
+  .sc-liab .sc-label { color:rgba(255,64,129,.7); }
+  .sc-net .sc-label { color:rgba(105,240,174,.7); }
+  .sc-value { font-size:1.8rem; font-weight:800; letter-spacing:-1px; }
+  .sc-assets .sc-value { color:var(--accent); }
+  .sc-liab .sc-value { color:var(--accent2); }
+  .sc-net .sc-value { color:var(--accent3); }
+  .sc-sub { font-size:.75rem; color:var(--text2); margin-top:4px; font-family:var(--mono); }
+
+  /* === TWO COL === */
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+  .three-col { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+
+  /* === TABLE === */
+  .data-section { margin-bottom:24px; }
+  .section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .section-title { font-size:.7rem; text-transform:uppercase; letter-spacing:2px; color:var(--text2); font-family:var(--mono); }
+  .btn {
+    padding:8px 16px; border-radius:8px; border:none; cursor:pointer; font-family:var(--font);
+    font-size:.8rem; font-weight:700; transition:all .2s;
+  }
+  .btn-accent { background:var(--accent); color:#000; }
+  .btn-accent:hover { filter:brightness(1.15); transform:translateY(-1px); }
+  .btn-accent2 { background:var(--accent2); color:#fff; }
+  .btn-accent2:hover { filter:brightness(1.15); transform:translateY(-1px); }
+  .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--text2); }
+  .btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-sm { padding:5px 10px; font-size:.72rem; }
+  .btn-danger { background:rgba(255,64,129,.15); border:1px solid rgba(255,64,129,.3); color:var(--accent2); }
+  .btn-danger:hover { background:rgba(255,64,129,.3); }
+
+  table { width:100%; border-collapse:collapse; font-size:.82rem; }
+  th { padding:10px 12px; text-align:left; font-size:.65rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text2); border-bottom:1px solid var(--border); font-family:var(--mono); }
+  td { padding:11px 12px; border-bottom:1px solid rgba(31,40,51,.7); }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(255,255,255,.02); }
+  .badge { padding:3px 10px; border-radius:20px; font-size:.68rem; font-weight:700; font-family:var(--mono); }
+  .badge-asset { background:rgba(0,229,255,.12); color:var(--accent); }
+  .badge-liab { background:rgba(255,64,129,.12); color:var(--accent2); }
+
+  /* === FORM === */
+  .form-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:12px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-group label { font-size:.65rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--text2); font-family:var(--mono); }
+  .form-group input, .form-group select {
+    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); padding:10px 12px; font-family:var(--font); font-size:.85rem;
+    outline:none; transition:border-color .2s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color:var(--accent); }
+  .form-group select option { background:var(--bg3); }
+
+  /* === CHARTS === */
+  .chart-wrap { position:relative; height:220px; }
+  .chart-wrap canvas { max-height:220px !important; }
+  .pie-wrap { position:relative; height:200px; }
+  .pie-wrap canvas { max-height:200px !important; }
+
+  /* === TABS === */
+  .tabs { display:flex; gap:4px; margin-bottom:20px; padding:4px; background:var(--bg3); border-radius:10px; width:fit-content; }
+  .tab {
+    padding:8px 18px; border-radius:7px; cursor:pointer; font-size:.8rem; font-weight:700;
+    color:var(--text2); transition:all .2s;
+  }
+  .tab.active { background:var(--bg); color:var(--accent); box-shadow:0 1px 8px rgba(0,0,0,.4); }
+
+  /* === CALCULATOR === */
+  .calc-grid { display:grid; grid-template-columns:1fr; gap:0; max-width:320px; margin:0 auto; }
+  .calc-display {
+    background:var(--bg3); border:1px solid var(--border); border-radius:12px 12px 0 0;
+    padding:20px; text-align:right; margin-bottom:1px;
+  }
+  .calc-expr { font-family:var(--mono); font-size:.8rem; color:var(--text2); min-height:1.2em; }
+  .calc-result { font-family:var(--mono); font-size:2rem; font-weight:500; color:var(--accent); }
+  .calc-btns { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; }
+  .calc-btn {
+    padding:18px; font-family:var(--mono); font-size:1rem; font-weight:500;
+    background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    cursor:pointer; transition:all .15s;
+  }
+  .calc-btn:hover { background:var(--border); }
+  .calc-btn.op { color:var(--accent); }
+  .calc-btn.eq { background:var(--accent); color:#000; font-weight:700; }
+  .calc-btn.eq:hover { filter:brightness(1.15); }
+  .calc-btn.clear { color:var(--accent2); }
+  .calc-btn:last-child { border-radius:0 0 12px 0; }
+  .calc-btn:nth-child(13) { border-radius:0 0 0 12px; }
+
+  /* === ABOUT === */
+  .about-hero {
+    background:linear-gradient(135deg,#001824,#002436);
+    border:1px solid rgba(0,229,255,.2); border-radius:16px;
+    padding:40px; text-align:center; margin-bottom:24px;
+    position:relative; overflow:hidden;
+  }
+  .about-hero::before {
+    content:''; position:absolute; width:400px; height:400px; border-radius:50%;
+    background:radial-gradient(circle,rgba(0,229,255,.08),transparent 70%);
+    top:50%; left:50%; transform:translate(-50%,-50%);
+  }
+  .about-avatar {
+    width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#0066cc);
+    display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:800;
+    margin:0 auto 16px; color:#000; position:relative;
+  }
+  .about-name { font-size:1.6rem; font-weight:800; letter-spacing:-1px; margin-bottom:4px; }
+  .about-tag { color:var(--accent); font-family:var(--mono); font-size:.8rem; }
+  .feature-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .feature-item {
+    background:var(--bg3); border:1px solid var(--border); border-radius:10px;
+    padding:16px; text-align:center;
+  }
+  .feature-icon { font-size:1.5rem; margin-bottom:8px; }
+  .feature-title { font-size:.82rem; font-weight:700; margin-bottom:4px; }
+  .feature-desc { font-size:.72rem; color:var(--text2); }
+
+  /* scroll */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* glow line top */
+  body::before {
+    content:''; position:fixed; top:0; left:220px; right:0; height:1px;
+    background:linear-gradient(90deg,var(--accent),transparent);
+    z-index:200; opacity:.5;
+  }
+
+  .empty-state { text-align:center; padding:32px; color:var(--text2); font-size:.85rem; }
+  .empty-state .big { font-size:2rem; margin-bottom:8px; }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .page.active { animation:fadeIn .3s ease; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="logo">
+    WealthTrack Pro
+    <span>Asset Management Suite</span>
+  </div>
+  <nav>
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <span class="nav-icon">📊</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('assets')">
+      <span class="nav-icon">💰</span> Assets
+    </div>
+    <div class="nav-item" onclick="showPage('liabilities')">
+      <span class="nav-icon">📉</span> Liabilities
+    </div>
+    <div class="nav-item" onclick="showPage('charts')">
+      <span class="nav-icon">📈</span> Charts
+    </div>
+    <div class="nav-item" onclick="showPage('calculator')">
+      <span class="nav-icon">🧮</span> Calculator
+    </div>
+    <div class="nav-item" onclick="showPage('about')">
+      <span class="nav-icon">ℹ️</span> About
+    </div>
+  </nav>
+  <div class="sidebar-footer">WealthTrack Pro v1.0<br>© 2024 Atharva Phadnis</div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="main">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <h1>Dashboard</h1>
+      <p>Your financial snapshot at a glance</p>
+    </div>
+    <div class="summary-grid">
+      <div class="summary-card sc-assets">
+        <div class="sc-label">Total Assets</div>
+        <div class="sc-value" id="dash-assets">₹0</div>
+        <div class="sc-sub" id="dash-assets-count">0 entries</div>
+      </div>
+      <div class="summary-card sc-liab">
+        <div class="sc-label">Total Liabilities</div>
+        <div class="sc-value" id="dash-liab">₹0</div>
+        <div class="sc-sub" id="dash-liab-count">0 entries</div>
+      </div>
+      <div class="summary-card sc-net">
+        <div class="sc-label">Net Worth</div>
+        <div class="sc-value" id="dash-net">₹0</div>
+        <div class="sc-sub" id="dash-net-label">Assets - Liabilities</div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Assets vs Liabilities — Bar Chart</div>
+        <div class="chart-wrap"><canvas id="dashBarChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Distribution — Pie Chart</div>
+        <div class="pie-wrap"><canvas id="dashPieChart"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Net Worth Trend — Line Graph</div>
+      <div class="chart-wrap"><canvas id="dashLineChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ASSETS -->
+  <div id="page-assets" class="page">
+    <div class="page-header">
+      <h1>Assets</h1>
+      <p>Manage all your assets in one place</p>
+    </div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title" style="margin-bottom:16px">Add New Asset</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Name</label>
+          <input id="a-name" type="text" placeholder="e.g. Savings Account">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="a-cat">
+            <option>Cash & Bank</option>
+            <option>Real Estate</option>
+            <option>Stocks & Equity</option>
+            <option>Mutual Funds</option>
+            <option>Gold & Metals</option>
+            <option>Fixed Deposit</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Value (₹)</label>
+          <input id="a-val" type="number" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input id="a-date" type="date">
+        </div>
+      </div>
+      <button class="btn btn-accent" onclick="addAsset()">＋ Add Asset</button>
+    </div>
+    <div class="card">
+      <div class="section-head">
+        <div class="section-title">Asset List</div>
+        <div style="color:var(--accent);font-family:var(--mono);font-size:.8rem" id="a-total-label">Total: ₹0</div>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Category</th><th>Value</th><th>Date</th><th>Action</th></tr></thead>
+        <tbody id="asset-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LIABILITIES -->
+  <div id="page-liabilities" class="page">
+    <div class="page-header">
+      <h1>Liabilities</h1>
+      <p>Track your loans, debts and obligations</p>
+    </div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title" style="margin-bottom:16px">Add New Liability</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Name</label>
+          <input id="l-name" type="text" placeholder="e.g. Home Loan">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="l-cat">
+            <option>Home Loan</option>
+            <option>Car Loan</option>
+            <option>Personal Loan</option>
+            <option>Credit Card</option>
+            <option>Education Loan</option>
+            <option>Business Debt</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <input id="l-val" type="number" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input id="l-date" type="date">
+        </div>
+      </div>
+      <button class="btn btn-accent2" onclick="addLiability()">＋ Add Liability</button>
+    </div>
+    <div class="card">
+      <div class="section-head">
+        <div class="section-title">Liability List</div>
+        <div style="color:var(--accent2);font-family:var(--mono);font-size:.8rem" id="l-total-label">Total: ₹0</div>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Category</th><th>Amount</th><th>Date</th><th>Action</th></tr></thead>
+        <tbody id="liab-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div id="page-charts" class="page">
+    <div class="page-header">
+      <h1>Charts & Analytics</h1>
+      <p>Visual breakdown of your financial data</p>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('line')">Line Graph</div>
+      <div class="tab" onclick="switchTab('bar')">Bar Chart</div>
+      <div class="tab" onclick="switchTab('pie')">Pie Chart</div>
+    </div>
+    <div id="tab-line">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Assets Over Time</div>
+        <div style="height:260px"><canvas id="lineAssets"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Liabilities Over Time</div>
+        <div style="height:260px"><canvas id="lineLiab"></canvas></div>
+      </div>
+    </div>
+    <div id="tab-bar" style="display:none">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Assets by Category</div>
+        <div style="height:300px"><canvas id="barAssets"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Liabilities by Category</div>
+        <div style="height:300px"><canvas id="barLiab"></canvas></div>
+      </div>
+    </div>
+    <div id="tab-pie" style="display:none">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Asset Distribution</div>
+          <div style="height:300px"><canvas id="pieAssets"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Liability Distribution</div>
+          <div style="height:300px"><canvas id="pieLiab"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALCULATOR -->
+  <div id="page-calculator" class="page">
+    <div class="page-header">
+      <h1>Calculator</h1>
+      <p>Quick financial calculations</p>
+    </div>
+    <div style="display:grid;grid-template-columns:320px 1fr;gap:24px;align-items:start">
+      <div class="calc-grid">
+        <div class="calc-display">
+          <div class="calc-expr" id="calc-expr"></div>
+          <div class="calc-result" id="calc-display">0</div>
+        </div>
+        <div class="calc-btns">
+          <button class="calc-btn clear" onclick="calcAction('C')">C</button>
+          <button class="calc-btn op" onclick="calcAction('±')">±</button>
+          <button class="calc-btn op" onclick="calcAction('%')">%</button>
+          <button class="calc-btn op" onclick="calcAction('/')">÷</button>
+          <button class="calc-btn" onclick="calcAction('7')">7</button>
+          <button class="calc-btn" onclick="calcAction('8')">8</button>
+          <button class="calc-btn" onclick="calcAction('9')">9</button>
+          <button class="calc-btn op" onclick="calcAction('*')">×</button>
+          <button class="calc-btn" onclick="calcAction('4')">4</button>
+          <button class="calc-btn" onclick="calcAction('5')">5</button>
+          <button class="calc-btn" onclick="calcAction('6')">6</button>
+          <button class="calc-btn op" onclick="calcAction('-')">−</button>
+          <button class="calc-btn" onclick="calcAction('1')">1</button>
+          <button class="calc-btn" onclick="calcAction('2')">2</button>
+          <button class="calc-btn" onclick="calcAction('3')">3</button>
+          <button class="calc-btn op" onclick="calcAction('+')">+</button>
+          <button class="calc-btn" onclick="calcAction('0')" style="grid-column:span 2">0</button>
+          <button class="calc-btn" onclick="calcAction('.')">.</button>
+          <button class="calc-btn eq" onclick="calcAction('=')">=</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <div class="card-title">Loan EMI Calculator</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+            <div class="form-group"><label>Principal (₹)</label><input id="emi-p" type="number" placeholder="500000"></div>
+            <div class="form-group"><label>Annual Rate (%)</label><input id="emi-r" type="number" placeholder="8.5"></div>
+            <div class="form-group"><label>Tenure (months)</label><input id="emi-t" type="number" placeholder="60"></div>
+            <div class="form-group"><label>&nbsp;</label><button class="btn btn-accent" style="height:40px;margin-top:2px" onclick="calcEMI()">Calculate EMI</button></div>
+          </div>
+          <div id="emi-result" style="margin-top:12px;font-family:var(--mono);color:var(--accent);font-size:.9rem"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Compound Interest</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+            <div class="form-group"><label>Principal (₹)</label><input id="ci-p" type="number" placeholder="100000"></div>
+            <div class="form-group"><label>Rate (% p.a.)</label><input id="ci-r" type="number" placeholder="10"></div>
+            <div class="form-group"><label>Years</label><input id="ci-t" type="number" placeholder="5"></div>
+            <div class="form-group"><label>&nbsp;</label><button class="btn btn-accent" style="height:40px;margin-top:2px" onclick="calcCI()">Calculate</button></div>
+          </div>
+          <div id="ci-result" style="margin-top:12px;font-family:var(--mono);color:var(--accent3);font-size:.9rem"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <div id="page-about" class="page">
+    <div class="page-header">
+      <h1>About</h1>
+      <p>WealthTrack Pro — Financial Management Suite</p>
+    </div>
+    <div class="about-hero">
+      <div class="about-avatar">AP</div>
+      <div class="about-name">Atharva Phadnis</div>
+      <div class="about-tag">// Developer & Creator</div>
+      <p style="color:var(--text2);font-size:.85rem;margin-top:16px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.6">
+        Built with passion to help individuals take control of their financial life through clean, powerful data visualization and intuitive management tools.
+      </p>
+    </div>
+    <div class="feature-grid" style="margin-bottom:24px">
+      <div class="feature-item">
+        <div class="feature-icon">💰</div>
+        <div class="feature-title">Asset Management</div>
+        <div class="feature-desc">Track all your assets across categories — cash, real estate, stocks, gold and more.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📉</div>
+        <div class="feature-title">Liability Tracking</div>
+        <div class="feature-desc">Monitor loans, credit cards, and other obligations to stay debt-aware.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Visual Analytics</div>
+        <div class="feature-desc">Line graphs, bar charts, and pie charts for complete financial visualization.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🧮</div>
+        <div class="feature-title">Built-in Calculator</div>
+        <div class="feature-desc">Standard calculator plus EMI and compound interest calculators.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📱</div>
+        <div class="feature-title">Clean UI</div>
+        <div class="feature-desc">Dark-themed, modern interface designed for clarity and ease of use.</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">💾</div>
+        <div class="feature-title">Local Storage</div>
+        <div class="feature-desc">Data persists in your browser — no server required, full privacy.</div>
+      </div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-family:var(--mono);font-size:.75rem;color:var(--text2)">
+        WealthTrack Pro v1.0 &nbsp;·&nbsp; Made with ❤️ by Atharva Phadnis &nbsp;·&nbsp; 2024
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===== DATA STORE =====
+let data = {
+  assets: JSON.parse(localStorage.getItem('wt-assets') || '[]'),
+  liabilities: JSON.parse(localStorage.getItem('wt-liab') || '[]'),
+  history: JSON.parse(localStorage.getItem('wt-hist') || '[]')
+};
+
+function save() {
+  localStorage.setItem('wt-assets', JSON.stringify(data.assets));
+  localStorage.setItem('wt-liab', JSON.stringify(data.liabilities));
+  localStorage.setItem('wt-hist', JSON.stringify(data.history));
+}
+
+function fmt(v) {
+  return '₹' + Number(v).toLocaleString('en-IN');
+}
+
+// ===== NAVIGATION =====
+let charts = {};
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event && event.currentTarget.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if(n.textContent.trim().toLowerCase().includes(id)) n.classList.add('active');
+  });
+  setTimeout(() => {
+    if(id === 'dashboard') refreshDashboard();
+    if(id === 'charts') refreshCharts();
+    if(id === 'assets') renderAssetTable();
+    if(id === 'liabilities') renderLiabTable();
+  }, 50);
+}
+
+// ===== ASSETS =====
+// Set today as default date
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('a-date').value = today;
+  document.getElementById('l-date').value = today;
+  refreshDashboard();
+  renderAssetTable();
+  renderLiabTable();
+});
+
+function addAsset() {
+  const name = document.getElementById('a-name').value.trim();
+  const cat = document.getElementById('a-cat').value;
+  const val = parseFloat(document.getElementById('a-val').value);
+  const date = document.getElementById('a-date').value;
+  if(!name || isNaN(val) || val <= 0) { alert('Please fill all fields with valid values.'); return; }
+  data.assets.push({ id: Date.now(), name, cat, val, date });
+  recordHistory();
+  save();
+  document.getElementById('a-name').value = '';
+  document.getElementById('a-val').value = '';
+  renderAssetTable();
+  refreshDashboard();
+}
+
+function deleteAsset(id) {
+  data.assets = data.assets.filter(a => a.id !== id);
+  recordHistory();
+  save();
+  renderAssetTable();
+  refreshDashboard();
+}
+
+function renderAssetTable() {
+  const tb = document.getElementById('asset-table');
+  const total = data.assets.reduce((s,a) => s+a.val, 0);
+  document.getElementById('a-total-label').textContent = 'Total: ' + fmt(total);
+  if(!data.assets.length) {
+    tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="big">💰</div>No assets yet. Add your first asset above!</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = data.assets.map((a,i) => `
+    <tr>
+      <td><span style="color:var(--text2);font-family:var(--mono)">${i+1}</span></td>
+      <td><strong>${a.name}</strong></td>
+      <td><span class="badge badge-asset">${a.cat}</span></td>
+      <td style="color:var(--accent);font-family:var(--mono);font-weight:600">${fmt(a.val)}</td>
+      <td style="color:var(--text2);font-family:var(--mono);font-size:.78rem">${a.date}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteAsset(${a.id})">✕ Delete</button></td>
+    </tr>`).join('');
+}
+
+// ===== LIABILITIES =====
+function addLiability() {
+  const name = document.getElementById('l-name').value.trim();
+  const cat = document.getElementById('l-cat').value;
+  const val = parseFloat(document.getElementById('l-val').value);
+  const date = document.getElementById('l-date').value;
+  if(!name || isNaN(val) || val <= 0) { alert('Please fill all fields with valid values.'); return; }
+  data.liabilities.push({ id: Date.now(), name, cat, val, date });
+  recordHistory();
+  save();
+  document.getElementById('l-name').value = '';
+  document.getElementById('l-val').value = '';
+  renderLiabTable();
+  refreshDashboard();
+}
+
+function deleteLiab(id) {
+  data.liabilities = data.liabilities.filter(l => l.id !== id);
+  recordHistory();
+  save();
+  renderLiabTable();
+  refreshDashboard();
+}
+
+function renderLiabTable() {
+  const tb = document.getElementById('liab-table');
+  const total = data.liabilities.reduce((s,l) => s+l.val, 0);
+  document.getElementById('l-total-label').textContent = 'Total: ' + fmt(total);
+  if(!data.liabilities.length) {
+    tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="big">📉</div>No liabilities. Great going!</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = data.liabilities.map((l,i) => `
+    <tr>
+      <td><span style="color:var(--text2);font-family:var(--mono)">${i+1}</span></td>
+      <td><strong>${l.name}</strong></td>
+      <td><span class="badge badge-liab">${l.cat}</span></td>
+      <td style="color:var(--accent2);font-family:var(--mono);font-weight:600">${fmt(l.val)}</td>
+      <td style="color:var(--text2);font-family:var(--mono);font-size:.78rem">${l.date}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteLiab(${l.id})">✕ Delete</button></td>
+    </tr>`).join('');
+}
+
+// ===== HISTORY =====
+function recordHistory() {
+  const assets = data.assets.reduce((s,a) => s+a.val, 0);
+  const liab = data.liabilities.reduce((s,l) => s+l.val, 0);
+  const now = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
+  // keep last 10 unique dates
+  const last = data.history[data.history.length-1];
+  if(last && last.label === now) {
+    last.assets = assets; last.liab = liab;
+  } else {
+    data.history.push({ label: now, assets, liab });
+    if(data.history.length > 12) data.history.shift();
+  }
+}
+
+// ===== CHARTS HELPER =====
+const COLORS_ASSETS = ['#00e5ff','#00b8d4','#0097a7','#00838f','#006064','#4dd0e1','#80deea','#b2ebf2'];
+const COLORS_LIAB = ['#ff4081','#f50057','#c51162','#ff80ab','#ff1744','#ff6d00','#ff9100','#ffd740'];
+
+function makeChart(id, type, labels, datasets, opts={}) {
+  if(charts[id]) { charts[id].destroy(); }
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color:'#8090a0', font:{ family:'DM Mono', size:11 } } },
+        tooltip: { backgroundColor:'#181d24', borderColor:'#1f2833', borderWidth:1,
+          titleColor:'#e8edf3', bodyColor:'#8090a0',
+          callbacks: { label: ctx => ' ₹' + Number(ctx.raw).toLocaleString('en-IN') }
+        }
+      },
+      scales: type !== 'pie' && type !== 'doughnut' ? {
+        x: { grid:{ color:'rgba(31,40,51,.8)' }, ticks:{ color:'#8090a0', font:{family:'DM Mono',size:10} } },
+        y: { grid:{ color:'rgba(31,40,51,.8)' }, ticks:{ color:'#8090a0', font:{family:'DM Mono',size:10},
+          callback: v => '₹' + (v>=1e5 ? (v/1e5).toFixed(1)+'L' : v>=1e3 ? (v/1e3).toFixed(0)+'K' : v) } }
+      } : {},
+      ...opts
+    }
+  });
+}
+
+// ===== DASHBOARD =====
+function refreshDashboard() {
+  const assets = data.assets.reduce((s,a) => s+a.val, 0);
+  const liab = data.liabilities.reduce((s,l) => s+l.val, 0);
+  const net = assets - liab;
+  document.getElementById('dash-assets').textContent = fmt(assets);
+  document.getElementById('dash-liab').textContent = fmt(liab);
+  document.getElementById('dash-net').textContent = fmt(net);
+  document.getElementById('dash-assets-count').textContent = data.assets.length + ' entries';
+  document.getElementById('dash-liab-count').textContent = data.liabilities.length + ' entries';
+  document.getElementById('dash-net-label').textContent = net >= 0 ? '▲ Positive Net Worth' : '▼ Negative Net Worth';
+
+  // Bar
+  makeChart('dashBarChart','bar',['Assets','Liabilities','Net Worth'],[{
+    data: [assets, liab, Math.abs(net)],
+    backgroundColor: ['rgba(0,229,255,.3)','rgba(255,64,129,.3)','rgba(105,240,174,.3)'],
+    borderColor: ['#00e5ff','#ff4081','#69f0ae'],
+    borderWidth: 2, borderRadius: 6
+  }]);
+
+  // Pie
+  if(assets + liab > 0) {
+    makeChart('dashPieChart','doughnut',['Assets','Liabilities'],[{
+      data: [assets, liab],
+      backgroundColor: ['rgba(0,229,255,.7)','rgba(255,64,129,.7)'],
+      borderColor: ['#00e5ff','#ff4081'], borderWidth: 2
+    }]);
+  }
+
+  // Line - history
+  if(data.history.length >= 2) {
+    const labels = data.history.map(h => h.label);
+    makeChart('dashLineChart','line',labels,[
+      { label:'Assets', data: data.history.map(h=>h.assets), borderColor:'#00e5ff', backgroundColor:'rgba(0,229,255,.1)', tension:.4, fill:true, pointBackgroundColor:'#00e5ff' },
+      { label:'Liabilities', data: data.history.map(h=>h.liab), borderColor:'#ff4081', backgroundColor:'rgba(255,64,129,.1)', tension:.4, fill:true, pointBackgroundColor:'#ff4081' }
+    ]);
+  } else {
+    makeChart('dashLineChart','line',['Start','Now'],[
+      { label:'Assets', data:[0,assets], borderColor:'#00e5ff', backgroundColor:'rgba(0,229,255,.1)', tension:.4, fill:true },
+      { label:'Liabilities', data:[0,liab], borderColor:'#ff4081', backgroundColor:'rgba(255,64,129,.1)', tension:.4, fill:true }
+    ]);
+  }
+}
+
+// ===== CHARTS PAGE =====
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  ['line','bar','pie'].forEach(t => document.getElementById('tab-'+t).style.display = t===tab?'block':'none');
+  setTimeout(() => buildTabCharts(tab), 50);
+}
+
+function buildTabCharts(tab) {
+  const assets = data.assets;
+  const liabs = data.liabilities;
+
+  if(tab === 'line') {
+    // group by date
+    const aDates = {}, lDates = {};
+    assets.forEach(a => { aDates[a.date] = (aDates[a.date]||0) + a.val; });
+    liabs.forEach(l => { lDates[l.date] = (lDates[l.date]||0) + l.val; });
+    const allDates = [...new Set([...Object.keys(aDates),...Object.keys(lDates)])].sort();
+    if(allDates.length === 0) allDates.push(new Date().toISOString().split('T')[0]);
+    makeChart('lineAssets','line',allDates,[{
+      label:'Assets', data: allDates.map(d=>aDates[d]||0),
+      borderColor:'#00e5ff', backgroundColor:'rgba(0,229,255,.12)', fill:true, tension:.4, pointRadius:5
+    }]);
+    makeChart('lineLiab','line',allDates,[{
+      label:'Liabilities', data: allDates.map(d=>lDates[d]||0),
+      borderColor:'#ff4081', backgroundColor:'rgba(255,64,129,.12)', fill:true, tension:.4, pointRadius:5
+    }]);
+  }
+
+  if(tab === 'bar') {
+    const aCats = {}, lCats = {};
+    assets.forEach(a => { aCats[a.cat] = (aCats[a.cat]||0)+a.val; });
+    liabs.forEach(l => { lCats[l.cat] = (lCats[l.cat]||0)+l.val; });
+    const aK = Object.keys(aCats), lK = Object.keys(lCats);
+    makeChart('barAssets','bar', aK.length?aK:['No Data'],[{
+      label:'Value', data: aK.length?aK.map(k=>aCats[k]):[0],
+      backgroundColor: COLORS_ASSETS.slice(0,aK.length||1).map(c=>c+'99'),
+      borderColor: COLORS_ASSETS.slice(0,aK.length||1), borderWidth:2, borderRadius:6
+    }]);
+    makeChart('barLiab','bar', lK.length?lK:['No Data'],[{
+      label:'Amount', data: lK.length?lK.map(k=>lCats[k]):[0],
+      backgroundColor: COLORS_LIAB.slice(0,lK.length||1).map(c=>c+'99'),
+      borderColor: COLORS_LIAB.slice(0,lK.length||1), borderWidth:2, borderRadius:6
+    }]);
+  }
+
+  if(tab === 'pie') {
+    const aCats = {}, lCats = {};
+    assets.forEach(a => { aCats[a.cat] = (aCats[a.cat]||0)+a.val; });
+    liabs.forEach(l => { lCats[l.cat] = (lCats[l.cat]||0)+l.val; });
+    const aK = Object.keys(aCats), lK = Object.keys(lCats);
+    makeChart('pieAssets','doughnut', aK.length?aK:['No Assets'],[{
+      data: aK.length?aK.map(k=>aCats[k]):[1],
+      backgroundColor: COLORS_ASSETS.slice(0,aK.length||1),
+      borderColor:'#111418', borderWidth:2
+    }]);
+    makeChart('pieLiab','doughnut', lK.length?lK:['No Liabilities'],[{
+      data: lK.length?lK.map(k=>lCats[k]):[1],
+      backgroundColor: COLORS_LIAB.slice(0,lK.length||1),
+      borderColor:'#111418', borderWidth:2
+    }]);
+  }
+}
+
+function refreshCharts() {
+  buildTabCharts('line');
+}
+
+// ===== CALCULATOR =====
+let calcExpr = '';
+let calcPrev = '';
+let calcOp = '';
+let calcNew = true;
+let calcDisplay = '0';
+
+function calcAction(btn) {
+  const disp = document.getElementById('calc-display');
+  const expr = document.getElementById('calc-expr');
+
+  if(btn === 'C') {
+    calcExpr = ''; calcPrev = ''; calcOp = ''; calcNew = true; calcDisplay = '0';
+  } else if(btn === '=') {
+    if(calcPrev !== '' && calcOp !== '') {
+      const a = parseFloat(calcPrev), b = parseFloat(calcDisplay);
+      let r;
+      if(calcOp === '+') r = a+b;
+      else if(calcOp === '-') r = a-b;
+      else if(calcOp === '*') r = a*b;
+      else if(calcOp === '/') r = b !== 0 ? a/b : 'Error';
+      calcExpr = calcPrev + ' ' + {'+':'+','-':'−','*':'×','/':'÷'}[calcOp] + ' ' + calcDisplay + ' =';
+      calcDisplay = typeof r === 'number' ? (Number.isInteger(r) ? r.toString() : r.toFixed(8).replace(/\.?0+$/, '')) : 'Error';
+      calcPrev = ''; calcOp = ''; calcNew = true;
+    }
+  } else if(['+','-','*','/'].includes(btn)) {
+    calcPrev = calcDisplay; calcOp = btn; calcNew = true;
+    calcExpr = calcDisplay + ' ' + {'+':'+','-':'−','*':'×','/':'÷'}[btn];
+  } else if(btn === '±') {
+    calcDisplay = calcDisplay.startsWith('-') ? calcDisplay.slice(1) : '-'+calcDisplay;
+  } else if(btn === '%') {
+    calcDisplay = (parseFloat(calcDisplay)/100).toString();
+  } else {
+    if(calcNew) { calcDisplay = btn === '.' ? '0.' : btn; calcNew = false; }
+    else {
+      if(btn === '.' && calcDisplay.includes('.')) return;
+      if(calcDisplay === '0' && btn !== '.') calcDisplay = btn;
+      else calcDisplay += btn;
+    }
+  }
+  disp.textContent = calcDisplay.length > 12 ? parseFloat(calcDisplay).toExponential(4) : calcDisplay;
+  expr.textContent = calcExpr;
+}
+
+function calcEMI() {
+  const p = parseFloat(document.getElementById('emi-p').value);
+  const r = parseFloat(document.getElementById('emi-r').value) / 12 / 100;
+  const n = parseInt(document.getElementById('emi-t').value);
+  if(isNaN(p)||isNaN(r)||isNaN(n)||r===0) { document.getElementById('emi-result').textContent='Please enter valid values.'; return; }
+  const emi = p * r * Math.pow(1+r,n) / (Math.pow(1+r,n)-1);
+  const total = emi * n;
+  const interest = total - p;
+  document.getElementById('emi-result').innerHTML =
+    `Monthly EMI: <span style="color:var(--accent)">${fmt(Math.round(emi))}</span> &nbsp;|&nbsp; Total Paid: <span style="color:var(--accent2)">${fmt(Math.round(total))}</span> &nbsp;|&nbsp; Interest: <span style="color:var(--accent3)">${fmt(Math.round(interest))}</span>`;
+}
+
+function calcCI() {
+  const p = parseFloat(document.getElementById('ci-p').value);
+  const r = parseFloat(document.getElementById('ci-r').value) / 100;
+  const t = parseFloat(document.getElementById('ci-t').value);
+  if(isNaN(p)||isNaN(r)||isNaN(t)) { document.getElementById('ci-result').textContent='Please enter valid values.'; return; }
+  const amount = p * Math.pow(1+r, t);
+  const gain = amount - p;
+  document.getElementById('ci-result').innerHTML =
+    `Final Amount: <span style="color:var(--accent3)">${fmt(Math.round(amount))}</span> &nbsp;|&nbsp; Gain: <span style="color:var(--accent)">${fmt(Math.round(gain))}</span> &nbsp;|&nbsp; Return: <span style="color:#ff9100">${((gain/p)*100).toFixed(2)}%</span>`;
+}
+</script>
+</body>
+</html>
